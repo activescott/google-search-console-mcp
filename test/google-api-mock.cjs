@@ -32,6 +32,20 @@ Gaxios.prototype.request = async function (options) {
     if (process.env.GSC_TEST_AUTH === 'adc') {
       assert.equal(headers['x-goog-user-project'], 'test-quota-project');
     }
+    // Reproduces a permission failure whose 403 and reason appear only in the
+    // structured response, never in the thrown error's message.
+    if (process.env.GSC_TEST_SITES_ERROR === 'structured-403') {
+      const message = 'Request had insufficient authentication scopes.';
+      const error = new Error(message);
+      error.status = 403;
+      error.code = 403;
+      error.response = {
+        status: 403, statusText: 'Forbidden', headers: {}, config: options,
+        data: { error: { code: 403, message, status: 'PERMISSION_DENIED',
+          errors: [{ message, domain: 'global', reason: 'forbidden' }] } },
+      };
+      throw error;
+    }
     data = { siteEntry: [{ siteUrl: 'sc-domain:example.com', permissionLevel: 'siteRestrictedUser' }] };
   } else {
     throw new Error(`Unexpected network request in offline test: ${url}`);

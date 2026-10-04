@@ -5,6 +5,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { google } from "googleapis";
 import { z } from "zod";
 import { createRequire } from "node:module";
+import { formatToolError } from "./auth-errors.js";
 
 const { version } = createRequire(import.meta.url)("../package.json");
 
@@ -13,6 +14,10 @@ const { version } = createRequire(import.meta.url)("../package.json");
 // Resolves credentials through the standard Google auth chain: the service
 // account key at GOOGLE_APPLICATION_CREDENTIALS if that variable is set,
 // otherwise the user's gcloud Application Default Credentials.
+//
+// Read-only Search Console access is all these tools need, so this is the only
+// scope requested. The gcloud login command in the setup instructions asks for
+// cloud-platform as well, but only so gcloud can attach a quota project.
 function getAuthClient() {
   const auth = new google.auth.GoogleAuth({
     scopes: ["https://www.googleapis.com/auth/webmasters.readonly"],
@@ -62,11 +67,9 @@ server.tool(
       return {
         content: [{ type: "text", text: `Sites:\n${formatted}` }],
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
-        content: [
-          { type: "text", text: `Error listing sites: ${error.message}` },
-        ],
+        content: [{ type: "text", text: formatToolError("list_sites", error) }],
       };
     }
   }
@@ -138,7 +141,11 @@ server.tool(
         : ["query"];
 
       // Build dimension filter groups
-      const filters: any[] = [];
+      const filters: Array<{
+        dimension: string;
+        operator: string;
+        expression: string;
+      }> = [];
 
       if (queryFilter) {
         const isRegex = queryFilter.startsWith("regex:");
@@ -174,7 +181,7 @@ server.tool(
         });
       }
 
-      const requestBody: any = {
+      const requestBody: Record<string, unknown> = {
         startDate,
         endDate,
         dimensions: dimensionList,
@@ -218,10 +225,10 @@ server.tool(
         .map(() => "---")
         .join(" | ");
 
-      const dataRows = rows.map((row: any) => {
+      const dataRows = rows.map((row) => {
         const keys = (row.keys || []).join(" | ");
-        const ctr = (row.ctr * 100).toFixed(2) + "%";
-        const position = row.position.toFixed(1);
+        const ctr = ((row.ctr ?? 0) * 100).toFixed(2) + "%";
+        const position = (row.position ?? 0).toFixed(1);
         return `${keys} | ${row.clicks} | ${row.impressions} | ${ctr} | ${position}`;
       });
 
@@ -235,12 +242,12 @@ server.tool(
           },
         ],
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         content: [
           {
             type: "text",
-            text: `Error querying search analytics: ${error.message}`,
+            text: formatToolError("search_analytics", error),
           },
         ],
       };
@@ -322,12 +329,12 @@ server.tool(
       return {
         content: [{ type: "text", text: lines.join("\n") }],
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         content: [
           {
             type: "text",
-            text: `Error inspecting URL: ${error.message}`,
+            text: formatToolError("inspect_url", error),
           },
         ],
       };
@@ -361,7 +368,7 @@ server.tool(
         };
       }
 
-      const lines = sitemaps.map((sm: any) => {
+      const lines = sitemaps.map((sm) => {
         const errors = sm.errors || 0;
         const warnings = sm.warnings || 0;
         const pending = sm.isPending ? " (pending)" : "";
@@ -376,12 +383,12 @@ server.tool(
           },
         ],
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         content: [
           {
             type: "text",
-            text: `Error listing sitemaps: ${error.message}`,
+            text: formatToolError("list_sitemaps", error),
           },
         ],
       };

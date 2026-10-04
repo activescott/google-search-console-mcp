@@ -282,4 +282,6 @@ This has been reported when adding newly created service accounts and motivated 
 - **Using ADC:** ensure an old `GOOGLE_APPLICATION_CREDENTIALS` setting isn't overriding your login. The signed-in Google account must have access to the property.
 - **Using a service account:** set `GOOGLE_APPLICATION_CREDENTIALS` to the key's absolute path and confirm its email was added to each property you want to read.
 
+`gcloud auth list` shows the accounts the gcloud CLI itself uses, which can differ from the account stored in ADC, so it does not tell you which identity the server authenticates as. With ADC, that identity is the account you selected the last time you ran `gcloud auth application-default login`; re-run the command and note the account in the browser to confirm. With a service account, it is the `client_email` in the key file. `list_sites` returns every property the current identity can read.
+
 </details>
