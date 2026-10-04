@@ -20,6 +20,17 @@ const RECONNECT_INSTRUCTION =
 const PROJECT_ID_INSTRUCTION =
   "Replace YOUR_PROJECT_ID with the Google Cloud project that has the Search Console API enabled. To list projects, run: gcloud projects list";
 
+// Logging in again rewrites the credentials file. gcloud tries to attach the
+// quota project itself but skips that silently when the account lacks
+// permission, so a login-only recovery can land on the quota project error.
+const QUOTA_PROJECT_FOLLOWUP = [
+  "Logging in again can leave the credentials without a quota project. If the next call reports a missing quota project, also run:",
+  "",
+  `  ${QUOTA_PROJECT_COMMAND}`,
+  "",
+  PROJECT_ID_INSTRUCTION,
+].join("\n");
+
 /**
  * Which identity the server is actually using. The account shown by
  * `gcloud auth list` is the gcloud CLI's own account and can differ from the
@@ -145,6 +156,8 @@ export function diagnoseAuthError(error: unknown): string | null {
       "",
       `  ${ADC_LOGIN_COMMAND}`,
       "",
+      QUOTA_PROJECT_FOLLOWUP,
+      "",
       RECONNECT_INSTRUCTION,
     ].join("\n");
   }
@@ -261,6 +274,8 @@ export function diagnoseAuthError(error: unknown): string | null {
       "Tell the user to run the following command (must be a single line, do not add line breaks):",
       "",
       `  ${ADC_LOGIN_COMMAND}`,
+      "",
+      QUOTA_PROJECT_FOLLOWUP,
       "",
       RECONNECT_INSTRUCTION,
       "",

@@ -85,6 +85,22 @@ test('expired reauth token asks for a single-line login command', () => {
   assert.ok(ADC_LOGIN_COMMAND.split('\n').length === 1);
 });
 
+test('every login-only recovery mentions the quota project follow-up', () => {
+  const unauthenticated = new Error('Request is missing required authentication credential.');
+  unauthenticated.response = { status: 401, data: {} };
+  for (const error of [new Error('invalid_rapt: reauth related error'), unauthenticated]) {
+    const diagnosis = diagnoseAuthError(error);
+    assert.ok(diagnosis.includes(ADC_LOGIN_COMMAND));
+    assert.ok(diagnosis.includes(QUOTA_PROJECT_COMMAND), diagnosis);
+  }
+});
+
+test('status carried only on response.data.error.code is diagnosed', () => {
+  const error = new Error('The caller does not have permission');
+  error.response = { data: { error: { code: 403, message: 'The caller does not have permission' } } };
+  assert.match(diagnoseAuthError(error), /^PERMISSION ERROR:/);
+});
+
 test('missing credentials are diagnosed with both setup commands', () => {
   const diagnosis = diagnoseAuthError(new Error('Could not load the default credentials.'));
   assert.ok(diagnosis.includes(ADC_LOGIN_COMMAND));
